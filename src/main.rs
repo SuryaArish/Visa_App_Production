@@ -34,7 +34,6 @@ async fn run_local_server() -> Result<(), Box<dyn std::error::Error>> {
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
         ]);
-
     let app = Router::new()
         // Health and Info Routes
         .route("/health", get(health_check))
@@ -55,6 +54,5 @@ async fn run_local_server() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting local server on http://localhost:3000");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     axum::serve(listener, app).await?;
-
     Ok(())
 }
