@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login with Google</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 2rem;
+            font-size: 1.8rem;
+        }
+
+        .google-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .google-btn:hover {
+            background: #3367d6;
+        }
+
+        .user-info {
+            margin-top: 2rem;
+            text-align: left;
+        }
+
+        .user-email {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .token-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .token-container h3 {
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Login with Google</h1>
+        
+        <!-- Login Section -->
+        <div id="loginSection">
+            <button class="google-btn" onclick="loginWithGoogle()">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Sign in with Google
+            </button>
+        </div>
+
+        <!-- User Info Section (hidden initially) -->
+        <div id="userSection" class="hidden">
+            <div class="user-email" id="userEmail"></div>
+            
+            <div class="token-container">
+                <h3>Access Token:</h3>
+                <pre id="accessToken"></pre>
+            </div>
+            
+            <div class="token-container">
+                <h3>Refresh Token:</h3>
+                <pre id="refreshToken"></pre>
+            </div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loading" class="loading hidden">Processing login...</div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://rtjhwgiffujdqaskkqkp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0amh3Z2lmZnVqZHFhc2trcWtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2NjA5NzYsImV4cCI6MjA4MDIzNjk3Nn0.YABc2UPEHOccV_LUKVdNKuiBt8dCM7IEmn_jYLgM1Kw';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Function to handle Google OAuth login
+        async function loginWithGoogle() {
+            try {
+                showLoading(true);
+                
+                // Trigger Google OAuth sign-in
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin
+                    }
+                });
+
+                if (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Unexpected error:', error);
+                alert('An unexpected error occurred');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Function to display user session data
+        function displayUserData(session) {
+            const userEmail = document.getElementById('userEmail');
+            const accessToken = document.getElementById('accessToken');
+            const refreshToken = document.getElementById('refreshToken');
+            
+            // Display user email
+            userEmail.textContent = `Logged in as: ${session.user.email}`;
+            
+            // Display tokens in formatted JSON
+            accessToken.textContent = JSON.stringify({
+                token: session.access_token,
+                expires_at: new Date(session.expires_at * 1000).toISOString(),
+                token_type: session.token_type
+            }, null, 2);
+            
+            refreshToken.textContent = JSON.stringify({
+                token: session.refresh_token || 'Not available'
+            }, null, 2);
+            
+            // Show user section, hide login section
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('userSection').classList.remove('hidden');
+        }
+
+        // Function to show/hide loading indicator
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.remove('hidden');
+            } else {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Check for existing session on page load
+        async function checkSession() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Session error:', error);
+                    return;
+                }
+                
+                if (session) {
+                    // User is already logged in
+                    displayUserData(session);
+                }
+            } catch (error) {
+                console.error('Error checking session:', error);
+            }
+        }
+
+        // Listen for auth state changes (handles OAuth redirect)
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth state changed:', event, session);
+            
+            if (event === 'SIGNED_IN' && session) {
+                displayUserData(session);
+            } else if (event === 'SIGNED_OUT') {
+                // Reset UI to login state
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('userSection').classList.add('hidden');
+            }
+        });
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+        });
+    </script>
+</body>
+</html>

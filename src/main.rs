@@ -9,11 +9,12 @@ mod models;
 mod handlers;
 mod middleware;
 mod config;
+mod auth;
 
 
 
 use handlers::*;
-use middleware::auth::auth_middleware;
+use auth::auth_middleware;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,8 +49,14 @@ async fn run_local_server() -> Result<(), Box<dyn std::error::Error>> {
         .route("/h1b_customer/by_login_email/:login_email", get(get_customer_by_login_email))
         .route("/h1b_customer/all", get(get_all_customers_no_filter))
         .route("/h1b_customer/activate/:customer_id", patch(activate_customer_by_id))
-        .layer(axum::middleware::from_fn(auth_middleware))
         .layer(cors);
+        
+    // Protected routes with auth
+    let protected_app = Router::new()
+        .route("/protected/customers", get(get_all_customers_with_status))
+        .layer(axum::middleware::from_fn(auth_middleware));
+        
+    let app = app.merge(protected_app);
 
     println!("Starting local server on http://localhost:3000");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
