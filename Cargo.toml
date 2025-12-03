@@ -17,6 +17,7 @@ tower = "0.4.13"
 tower-http = { version = "0.5.0", features = ["cors"] }
 anyhow = "1.0.75"
 dotenv = "0.15.0"
+reqwest = { version = "0.11", features = ["json"] }
 # Swagger / OpenAPI
 utoipa = { version = "4.2", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "4.0", features = ["axum"] }

@@ -153,7 +153,7 @@ pub async fn soft_delete_customer(
     // Use the pool directly, SQLx will manage connections automatically
     match sqlx::query("UPDATE visa_db.h1bcustomer SET h1b_status = 'Inactive' WHERE email = $1")
         .bind(&email)
-        .execute(&pool) // <-- pass the pool, not manually acquired conn
+        .execute(pool)
         .await 
     {
         Ok(result) => {
@@ -190,7 +190,7 @@ pub async fn get_customer_personal(
     
     match sqlx::query(query_sql)
         .bind(&id)
-        .fetch_optional(&pool)
+        .fetch_optional(pool)
         .await {
         Ok(Some(row)) => {
             Ok(Json(serde_json::json!({
@@ -227,7 +227,7 @@ pub async fn get_customer_address(
     
     match sqlx::query(query_sql)
         .bind(&id)
-        .fetch_optional(&pool)
+        .fetch_optional(pool)
         .await {
         Ok(Some(row)) => {
             Ok(Json(serde_json::json!({
@@ -254,7 +254,7 @@ pub async fn get_customer_address(
 pub async fn get_customer_h1b(
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let query_sql = "SELECT customer_id, client_name, client_street_name, client_city, client_state, client_zip,
         lca_title, lca_salary, lca_code, receipt_number, h1b_start_date, h1b_end_date, h1b_status::text 
@@ -262,7 +262,7 @@ pub async fn get_customer_h1b(
     
     match sqlx::query(query_sql)
         .bind(&id)
-        .fetch_optional(&pool)
+        .fetch_optional(pool)
         .await {
         Ok(Some(row)) => {
             Ok(Json(serde_json::json!({
@@ -298,7 +298,7 @@ pub async fn update_customer_address(
     Path(id): Path<String>,
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let query_sql = "UPDATE visa_db.h1bcustomer SET 
         street_name = $2, city = $3, state = $4, zip = $5 
@@ -310,7 +310,7 @@ pub async fn update_customer_address(
         .bind(payload["city"].as_str().unwrap_or(""))
         .bind(payload["state"].as_str().unwrap_or(""))
         .bind(payload["zip"].as_str().unwrap_or(""))
-        .execute(&pool)
+        .execute(pool)
         .await {
         Ok(result) => {
             if result.rows_affected() > 0 {
@@ -336,7 +336,7 @@ pub async fn update_customer_h1b(
     Path(id): Path<String>,
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let query_sql = "UPDATE visa_db.h1bcustomer SET 
         client_name = $2, client_street_name = $3, client_city = $4, client_state = $5, client_zip = $6,
@@ -358,7 +358,7 @@ pub async fn update_customer_h1b(
         .bind(payload["h1b_start_date"].as_str().unwrap_or(""))
         .bind(payload["h1b_end_date"].as_str().unwrap_or(""))
         .bind(payload["h1b_status"].as_str().unwrap_or("Active"))
-        .execute(&pool)
+        .execute(pool)
         .await {
         Ok(result) => {
             if result.rows_affected() > 0 {
@@ -385,7 +385,7 @@ pub async fn update_visa_details_by_id(
     Json(payload): Json<UpdateVisaDetailsRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     println!("🔥 update_visa_details_by_id function called for customer_id: {}", customer_id);
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     let mut tx = pool.begin().await.map_err(|e| {
         eprintln!("❌ Failed to begin transaction in update_visa_details_by_id: {}", e);
         eprintln!("❌ Transaction error details: {:?}", e);
@@ -506,7 +506,7 @@ pub async fn update_visa_details_by_id(
 pub async fn get_customer_by_id(
     Path(customer_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let raw_sql = format!("SELECT customer_id, email, first_name, last_name, dob, sex::text, marital_status::text, phone, 
         emergency_contact_name, emergency_contact_phone, employment_start_date,
@@ -566,7 +566,7 @@ pub async fn get_customer_by_id(
 pub async fn get_customer_by_email(
     Path(email): Path<String>,
 ) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let raw_sql = format!("SELECT customer_id, email, first_name, last_name, dob, sex::text, marital_status::text, phone, 
         emergency_contact_name, emergency_contact_phone, employment_start_date,
@@ -631,7 +631,7 @@ pub async fn soft_delete_customer_by_id(
     Path(customer_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     println!("🔥 soft_delete_customer_by_id function called for customer_id: {}", customer_id);
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
 
     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
     let check_sql = format!("SELECT h1b_status::text FROM global_visa_mgmt.h1bcustomer WHERE customer_id = '{}'::uuid -- {}", customer_id.replace("'", "''"), timestamp);
@@ -683,12 +683,13 @@ pub async fn soft_delete_customer_by_id(
         }
     }
 }
+
 pub async fn update_customer_by_id(
     Path(customer_id): Path<String>,
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     println!("🔥 update_customer_by_id function called for customer_id: {}", customer_id);
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
 
     let raw_sql = format!("UPDATE global_visa_mgmt.h1bcustomer SET 
         email = '{}', first_name = '{}', last_name = '{}', dob = '{}', 
@@ -751,6 +752,7 @@ pub async fn update_customer_by_id(
         }
     }
 }
+
 pub async fn get_all_customers_with_status() -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
     println!("🔥 get_all_customers_with_status function called");
     let pool = get_db_pool().await;
@@ -807,10 +809,11 @@ pub async fn get_all_customers_with_status() -> Result<Json<Vec<serde_json::Valu
 
     Ok(Json(customers))
 }
+
 pub async fn get_customer_by_login_email(
     Path(login_email): Path<String>,
 ) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let raw_sql = format!("SELECT customer_id, email, first_name, last_name, dob, sex::text, marital_status::text, phone, 
         emergency_contact_name, emergency_contact_phone, employment_start_date,
@@ -872,7 +875,7 @@ pub async fn get_customer_by_login_email(
 }
 pub async fn get_all_customers_no_filter() -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
     println!("🔥 get_all_customers_no_filter function called");
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
     
     let timestamp = get_timestamp();
     let raw_sql = format!("SELECT customer_id, email, first_name, last_name, dob, sex::text, marital_status::text, phone, 
@@ -931,7 +934,7 @@ pub async fn activate_customer_by_id(
     Path(customer_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     println!("🔥 activate_customer_by_id function called for customer_id: {}", customer_id);
-    let pool = get_db_pool();
+    let pool = get_db_pool().await;
 
     let timestamp = get_timestamp();
     let check_sql = format!("SELECT h1b_status::text FROM global_visa_mgmt.h1bcustomer WHERE customer_id = '{}'::uuid -- {}", customer_id.replace("'", "''"), timestamp);
