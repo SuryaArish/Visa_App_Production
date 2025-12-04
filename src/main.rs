@@ -26,7 +26,7 @@ async fn run_local_server() -> Result<(), Box<dyn std::error::Error>> {
 
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS])
-        .allow_origin(Any)
+        .allow_origin("http://localhost:5173", "https://visa-web.techarjava.workers.dev/" , "https://dev.visa-web.techarjava.workers.dev/")
         .allow_headers(vec![
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
