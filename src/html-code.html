@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -102,11 +101,28 @@
             color: #666;
             font-style: italic;
         }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 1rem;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Login with Google</h1>
+        <h1>Welcome to Google Login</h1>
         
         <!-- Login Section -->
         <div id="loginSection">
@@ -134,6 +150,8 @@
                 <h3>Refresh Token:</h3>
                 <pre id="refreshToken"></pre>
             </div>
+            
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
         </div>
 
         <!-- Loading indicator -->
@@ -150,23 +168,30 @@
         async function loginWithGoogle() {
             try {
                 showLoading(true);
+                console.log('Starting Google OAuth login...');
                 
                 // Trigger Google OAuth sign-in
                 const { data, error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: window.location.origin
+                        redirectTo: window.location.href,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent',
+                        }
                     }
                 });
 
                 if (error) {
                     console.error('Login error:', error);
                     alert('Login failed: ' + error.message);
+                    showLoading(false);
+                } else {
+                    console.log('OAuth redirect initiated');
                 }
             } catch (error) {
                 console.error('Unexpected error:', error);
-                alert('An unexpected error occurred');
-            } finally {
+                alert('An unexpected error occurred: ' + error.message);
                 showLoading(false);
             }
         }
@@ -196,6 +221,22 @@
             document.getElementById('userSection').classList.remove('hidden');
         }
 
+        // Function to handle logout
+        async function logoutUser() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                    console.error('Logout error:', error);
+                    alert('Logout failed: ' + error.message);
+                } else {
+                    console.log('User logged out successfully');
+                }
+            } catch (error) {
+                console.error('Unexpected logout error:', error);
+                alert('An unexpected error occurred during logout');
+            }
+        }
+
         // Function to show/hide loading indicator
         function showLoading(show) {
             const loading = document.getElementById('loading');
@@ -209,6 +250,7 @@
         // Check for existing session on page load
         async function checkSession() {
             try {
+                console.log('Checking for existing session...');
                 const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (error) {
@@ -217,8 +259,10 @@
                 }
                 
                 if (session) {
-                    // User is already logged in
+                    console.log('Found existing session:', session);
                     displayUserData(session);
+                } else {
+                    console.log('No existing session found');
                 }
             } catch (error) {
                 console.error('Error checking session:', error);
@@ -226,22 +270,78 @@
         }
 
         // Listen for auth state changes (handles OAuth redirect)
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state changed:', event, session);
             
             if (event === 'SIGNED_IN' && session) {
+                console.log('User signed in successfully');
                 displayUserData(session);
+                showLoading(false);
             } else if (event === 'SIGNED_OUT') {
+                console.log('User signed out');
                 // Reset UI to login state
                 document.getElementById('loginSection').classList.remove('hidden');
                 document.getElementById('userSection').classList.add('hidden');
+            } else if (event === 'TOKEN_REFRESHED' && session) {
+                console.log('Token refreshed');
+                displayUserData(session);
             }
         });
 
+        // Handle URL hash for OAuth callback
+        async function handleOAuthCallback() {
+            const hash = window.location.hash;
+            const search = window.location.search;
+            console.log('Current URL hash:', hash);
+            console.log('Current URL search:', search);
+            
+            if (hash && (hash.includes('access_token') || hash.includes('error'))) {
+                console.log('OAuth callback detected in URL hash');
+                showLoading(true);
+                
+                // Wait for Supabase to process the session
+                setTimeout(async () => {
+                    await checkSession();
+                    window.history.replaceState(null, null, window.location.pathname);
+                    showLoading(false);
+                }, 2000);
+            }
+            
+            if (search && (search.includes('code=') || search.includes('error='))) {
+                console.log('OAuth callback detected in URL search params');
+                showLoading(true);
+                
+                // Wait for Supabase to process the session
+                setTimeout(async () => {
+                    await checkSession();
+                    window.history.replaceState(null, null, window.location.pathname);
+                    showLoading(false);
+                }, 2000);
+            }
+        }
+
         // Initialize the app
-        document.addEventListener('DOMContentLoaded', () => {
-            checkSession();
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Page loaded, initializing...');
+            await handleOAuthCallback();
+            await checkSession();
+        });
+        
+        // Also handle page visibility changes (when user returns from OAuth)
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden) {
+                console.log('Page became visible, checking session...');
+                setTimeout(async () => {
+                    await checkSession();
+                }, 1000);
+            }
         });
     </script>
 </body>
 </html>
+
+
+
+
+
+
