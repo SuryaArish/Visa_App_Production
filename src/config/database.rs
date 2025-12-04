@@ -1,5 +1,4 @@
 use sqlx::{PgPool, postgres::PgPoolOptions};
-use std::sync::OnceLock;
 use tokio::sync::OnceCell;
 
 static DB_POOL: OnceCell<PgPool> = OnceCell::const_new();
