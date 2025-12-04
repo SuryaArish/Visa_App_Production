@@ -122,6 +122,7 @@
 <body>
     <div class="container">
         <h1>Login with Google</h1>
+        <h1>Welcome to Google Login</h1>
         
         <!-- Login Section -->
         <div id="loginSection">
