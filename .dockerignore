@@ -7,3 +7,4 @@ Dockerfile
 *.md
 .env
 node_modules/
+Cargo.lock

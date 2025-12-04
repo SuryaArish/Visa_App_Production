@@ -1,10 +1,10 @@
 # Build stage
-FROM rust:1.75 as builder
+FROM rust:latest as builder
 
 WORKDIR /app
 
 # Copy manifests first for better caching
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 
 # Create dummy src to cache dependencies
 RUN mkdir src && echo "fn main() {}" > src/main.rs
